@@ -1,0 +1,14 @@
+{
+  "name": "minds-soul-backend",
+  "version": "1.0.0",
+  "description": "AI Chatbot for the Mind's Soul app",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.11.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
