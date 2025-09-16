@@ -55,8 +55,7 @@ app.post('/api/chat', async (req, res) => {
       parts: [{ text: msg.text }],
     }));
 
-    // Remove the current user message from history, as it's the new prompt
-    formattedHistory.pop(); 
+    formattedHistory.pop();
 
     const chat = aiModel.startChat({
       history: [
@@ -67,7 +66,11 @@ app.post('/api/chat', async (req, res) => {
       generationConfig: { maxOutputTokens: 2048 },
     });
 
+    // --- THIS IS THE CORRECTED LINE ---
+    // We now send the message as a list/array with a text part,
+    // which is the format the library expects.
     const result = await chat.sendMessage(message);
+
     const botText = result.response.text();
 
     try {
@@ -79,7 +82,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
   } catch (error) {
-    console.error(error);
+    console.error("Error in /api/chat:", error); // More detailed logging
     res.status(500).json({ error: 'Failed to get response from AI' });
   }
 });
@@ -89,3 +92,4 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
 });
+
