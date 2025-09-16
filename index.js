@@ -48,7 +48,21 @@ If you are just chatting, do NOT output JSON. Just respond as a normal chatbot.
 // --- API ENDPOINT ---
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history } = req.body;
+    // Use 'let' so we can modify the variables if needed
+    let { message, history } = req.body;
+
+    // --- PERMANENT FIX ---
+    // If the 'message' field wasn't sent from the app,
+    // we extract the latest user message from the history.
+    if (!message && history && history.length > 0) {
+      message = history[history.length - 1].text;
+    }
+
+    // Final check to ensure we have a message to send.
+    if (!message) {
+      return res.status(400).json({ error: "message is required and was not found." });
+    }
+    // --- END FIX ---
 
     const formattedHistory = history.map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'model',
@@ -65,10 +79,7 @@ app.post('/api/chat', async (req, res) => {
       ],
       generationConfig: { maxOutputTokens: 2048 },
     });
-
-    // --- THIS IS THE CORRECTED LINE ---
-    // We now send the message as a list/array with a text part,
-    // which is the format the library expects.
+    
     const result = await chat.sendMessage(message);
 
     const botText = result.response.text();
