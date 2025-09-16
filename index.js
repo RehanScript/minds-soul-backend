@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // --- SETUP ---
 const app = express();
@@ -9,15 +9,16 @@ app.use(express.json());
 app.use(cors());
 
 // Get API key from Environment Variables
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-if (!OPENAI_API_KEY) {
-  console.error('FATAL ERROR: OPENAI_API_KEY is not set!');
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+if (!GEMINI_API_KEY) {
+  console.error('FATAL ERROR: GEMINI_API_KEY is not set!');
 }
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const aiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 // --- HEALTH CHECK ENDPOINT ---
 app.get('/', (req, res) => {
-  res.send("Mind's Soul AI Backend is running on Render!");
+  res.send("Mind's Soul AI Backend is running on Render with Gemini!");
 });
 
 // --- THE CHATBOT'S "PERSONALITY" (System Prompt) ---
@@ -47,22 +48,27 @@ If you are just chatting, do NOT output JSON. Just respond as a normal chatbot.
 // --- API ENDPOINT ---
 app.post('/api/chat', async (req, res) => {
   try {
-    const { history } = req.body;
+    const { message, history } = req.body;
 
-    const messages = history.map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'assistant',
-      content: msg.text,
+    const formattedHistory = history.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }],
     }));
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...messages
+    // Remove the current user message from history, as it's the new prompt
+    formattedHistory.pop(); 
+
+    const chat = aiModel.startChat({
+      history: [
+        { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+        { role: 'model', parts: [{ text: "I'm here to listen. This is a safe space. Please feel free to tell me what's on your mind." }] },
+        ...formattedHistory,
       ],
+      generationConfig: { maxOutputTokens: 2048 },
     });
 
-    const botText = completion.choices[0].message.content;
+    const result = await chat.sendMessage(message);
+    const botText = result.response.text();
 
     try {
       const plan = JSON.parse(botText);
